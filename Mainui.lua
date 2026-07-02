@@ -587,6 +587,7 @@ end
 ------------------------------------------------------------------------
 local catOrder = 0
 local UILib    = {}
+UILib.Theme    = C   -- expose theme so calling scripts can safely read UILib.Theme.Accent
 
 function UILib.SetTitle(name)
     titleLbl.Text = name or "MyUI"
