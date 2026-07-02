@@ -1,4 +1,6 @@
--- UILibrary.lua
+-- Host this content at a raw URL (pastebin, github raw, etc.)
+-- Then use: local UILib = loadstring(game:HttpGet("YOUR_URL"))()
+
 local Players          = game:GetService("Players")
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -140,9 +142,13 @@ function BlurredGui:Destroy()
     rebuildPartsList()
 end
 
-RunService:BindToRenderStep("UILibraryBlurUpdate", Enum.RenderPriority.Camera.Value + 1, function()
-    BlurredGui.updateAll()
-end)
+RunService:BindToRenderStep(
+    "UILibraryBlurUpdate",
+    Enum.RenderPriority.Camera.Value + 1,
+    function()
+        BlurredGui.updateAll()
+    end
+)
 
 ------------------------------------------------------------------------
 -- THEME
@@ -264,8 +270,6 @@ local function Headshot(uid)
     return ok and u or ""
 end
 
--- Normalises a user-supplied asset reference (number, "123456", or
--- "rbxassetid://123456") into a proper rbxassetid:// string.
 local function ResolveAssetId(id)
     if id == nil or id == "" then return nil end
     if type(id) == "number" then
@@ -284,12 +288,30 @@ end
 
 ------------------------------------------------------------------------
 -- SCREEN GUI
+-- Uses a unique name + cleanup of any previous instance so that
+-- re-running the loadstring doesn't stack duplicate GUIs.
 ------------------------------------------------------------------------
+local GUI_NAME = "UILibrary_v1"
+
+-- Remove any stale instance from a previous loadstring run
+local function cleanupOldGui()
+    -- Check CoreGui first
+    local old = CoreGui:FindFirstChild(GUI_NAME)
+    if old then old:Destroy() end
+    -- Check PlayerGui
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if pg then
+        local old2 = pg:FindFirstChild(GUI_NAME)
+        if old2 then old2:Destroy() end
+    end
+end
+cleanupOldGui()
+
 local SG
 do
     local ok = pcall(function()
         SG = N("ScreenGui", {
-            Name           = "UILibrary",
+            Name           = GUI_NAME,
             ResetOnSpawn   = false,
             ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
             IgnoreGuiInset = true,
@@ -298,7 +320,7 @@ do
     end)
     if not ok then
         SG = N("ScreenGui", {
-            Name           = "UILibrary",
+            Name           = GUI_NAME,
             ResetOnSpawn   = false,
             ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
             IgnoreGuiInset = true,
@@ -364,11 +386,6 @@ end)
 
 ------------------------------------------------------------------------
 -- HEADER
--- Solid colour, rounded on top only. hdrOuter is exactly HEAD tall
--- (never extends into the body area). A sharp-edged "cover" rectangle
--- of the same colour sits over the BOTTOM corner-radius worth of
--- pixels (still fully inside the header's own height) so the bottom
--- two corners look sharp while the top two stay rounded.
 ------------------------------------------------------------------------
 local hdrOuter = N("Frame", {
     Name             = "HdrOuter",
@@ -558,18 +575,39 @@ local function nextPopupZ()
 end
 
 ------------------------------------------------------------------------
--- ADD CATEGORY
+-- PUBLIC API
 ------------------------------------------------------------------------
 local catOrder = 0
 local UILib    = {}
 
-------------------------------------------------------------------------
--- SET TITLE
-------------------------------------------------------------------------
 function UILib.SetTitle(name)
     titleLbl.Text = name or "MyUI"
 end
 
+------------------------------------------------------------------------
+-- Destroy / cleanup – useful when re-executing the script
+------------------------------------------------------------------------
+function UILib.Destroy()
+    -- Unbind blur update
+    pcall(function()
+        RunService:UnbindFromRenderStep("UILibraryBlurUpdate")
+    end)
+    -- Destroy all blur parts
+    for blurObj, part in pairs(BlurObjects) do
+        pcall(function() part:Destroy() end)
+    end
+    BlurObjects = {}
+    BlursList   = {}
+    PartsList   = {}
+    -- Remove depth of field
+    pcall(function() BLUR_OBJ:Destroy() end)
+    -- Remove screen gui
+    pcall(function() SG:Destroy() end)
+end
+
+------------------------------------------------------------------------
+-- ADD CATEGORY
+------------------------------------------------------------------------
 function UILib.AddCategory(cfg)
     if type(cfg) == "string" then cfg = {Name = cfg} end
     local name    = cfg.Name  or "Category"
@@ -599,12 +637,10 @@ function UILib.AddCategory(cfg)
         Parent                 = wrap,
     })
 
-    -- Optional icon to the left of the category name. When present,
-    -- the name label shifts right to make room for it.
-    local ICON_SIZE   = 14
-    local ICON_GAP    = 6
-    local BASE_LEFT   = 10
-    local textLeft    = imageId and (BASE_LEFT + ICON_SIZE + ICON_GAP) or BASE_LEFT
+    local ICON_SIZE = 14
+    local ICON_GAP  = 6
+    local BASE_LEFT = 10
+    local textLeft  = imageId and (BASE_LEFT + ICON_SIZE + ICON_GAP) or BASE_LEFT
 
     if imageId then
         N("ImageLabel", {
@@ -678,11 +714,11 @@ function UILib.AddCategory(cfg)
             end
         end
         local h = v and subLayout.AbsoluteContentSize.Y or 0
-        Tw(subC,   {Size       = UDim2.new(1, 0, 0, h)},           0.15, "Quad")
-        Tw(wrap,   {Size       = UDim2.new(1, 0, 0, 30 + h)},      0.15, "Quad")
-        Tw(catLbl, {TextColor3 = v and C.TextMain or C.TextMuted},  0.12)
-        Tw(cL,     {Rotation   = v and -40 or  40},                 0.15)
-        Tw(cR,     {Rotation   = v and  40 or -40},                 0.15)
+        Tw(subC,   {Size       = UDim2.new(1, 0, 0, h)},          0.15, "Quad")
+        Tw(wrap,   {Size       = UDim2.new(1, 0, 0, 30 + h)},     0.15, "Quad")
+        Tw(catLbl, {TextColor3 = v and C.TextMain or C.TextMuted}, 0.12)
+        Tw(cL,     {Rotation   = v and -40 or  40},                0.15)
+        Tw(cR,     {Rotation   = v and  40 or -40},                0.15)
     end
 
     catReg.setOpen   = setOpen
@@ -1746,7 +1782,7 @@ function UILib.AddCategory(cfg)
             end
 
             return cAPI
-        end
+        end -- makeCard
 
         function tabAPI:AddCard(colNum, title)
             return makeCard(colNum == 1 and col1 or col2, title)
@@ -1755,9 +1791,13 @@ function UILib.AddCategory(cfg)
         function tabAPI:Col2() return col2 end
 
         return tabAPI
-    end
+    end -- catAPI:AddTab
 
     return catAPI
-end
+end -- UILib.AddCategory
 
-return UILib 
+------------------------------------------------------------------------
+-- RETURN
+-- This is the value that loadstring(...)() evaluates to.
+------------------------------------------------------------------------
+return UILib
