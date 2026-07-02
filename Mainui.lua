@@ -8,30 +8,40 @@ local LocalPlayer      = Players.LocalPlayer
 local camera           = workspace.CurrentCamera
 
 ------------------------------------------------------------------------
--- THEME (moved up so everything can reference C)
+-- THEME
 ------------------------------------------------------------------------
 local C = {
-    BgMain      = Color3.fromRGB(12,  13,  17),
-    BgWindow    = Color3.fromRGB(17,  19,  23),
-    BgSidebar   = Color3.fromRGB(8,   9,   11),
-    BgCard      = Color3.fromRGB(21,  24,  29),
-    BgInput     = Color3.fromRGB(26,  29,  36),
-    Accent      = Color3.fromRGB(29,  191, 158),
-    AccentDim   = Color3.fromRGB(19,  128, 106),
-    BtnBg       = Color3.fromRGB(38,  42,  52),
-    BtnBgHover  = Color3.fromRGB(50,  55,  68),
-    BtnBgDown   = Color3.fromRGB(28,  32,  42),
-    TextMain    = Color3.fromRGB(209, 213, 219),
-    TextMuted   = Color3.fromRGB(107, 114, 128),
-    TextDis     = Color3.fromRGB(46,  50,  59),
+    BgMain      = Color3.fromRGB(22,  26,  22),
+    BgWindow    = Color3.fromRGB(18,  22,  18),
+    BgSidebar   = Color3.fromRGB(14,  17,  14),
+    BgCard      = Color3.fromRGB(26,  30,  26),
+    BgInput     = Color3.fromRGB(32,  38,  32),
+    Accent      = Color3.fromRGB(0,   200, 120),
+    AccentDim   = Color3.fromRGB(0,   140,  84),
+    AccentDark  = Color3.fromRGB(0,    80,  50),
+    BtnBg       = Color3.fromRGB(32,  40,  32),
+    BtnBgHover  = Color3.fromRGB(40,  50,  40),
+    BtnBgDown   = Color3.fromRGB(20,  28,  20),
+    TextMain    = Color3.fromRGB(210, 215, 210),
+    TextMuted   = Color3.fromRGB(100, 110, 100),
+    TextDis     = Color3.fromRGB(55,  65,  55),
+    CatBg       = Color3.fromRGB(30,  36,  30),
+    CatBgOpen   = Color3.fromRGB(26,  32,  26),
+    SubBg       = Color3.fromRGB(18,  22,  18),
+    TabSelected = Color3.fromRGB(210, 215, 210),
+    TabHover    = Color3.fromRGB(150, 160, 150),
     White       = Color3.fromRGB(255, 255, 255),
     Black       = Color3.fromRGB(0,   0,   0),
-    BgHeader    = Color3.fromRGB(10,  11,  15),
+    BgHeader    = Color3.fromRGB(12,  15,  12),
+    SliderFill  = Color3.fromRGB(0,   200, 120),
+    SliderTrack = Color3.fromRGB(32,  38,  32),
+    ToggleOff   = Color3.fromRGB(45,  55,  45),
+    ToggleThumb = Color3.fromRGB(90,  100,  90),
 }
 
-local WIN_TRANS  = 0.6
-local MAIN_TRANS = 0.6
-local SIDE_TRANS = 0.35
+local WIN_TRANS  = 0
+local MAIN_TRANS = 0
+local SIDE_TRANS = 0
 
 ------------------------------------------------------------------------
 -- BLUR SYSTEM
@@ -39,9 +49,8 @@ local SIDE_TRANS = 0.35
 local BLUR_SIZE         = Vector2.new(10, 10)
 local PART_SIZE         = 0.01
 local PART_TRANSPARENCY = 1 - 1e-7
-local START_INTENSITY   = 0.25
+local START_INTENSITY   = 0.18
 
--- Remove old DepthOfFieldEffect if re-running
 for _, v in ipairs(Lighting:GetChildren()) do
     if v:IsA("DepthOfFieldEffect") and v.Name == "UILibDOF" then
         v:Destroy()
@@ -86,53 +95,41 @@ local function updateGui(blurObj)
         blurObj.Part.Transparency = 1
         return
     end
-
     local cam   = workspace.CurrentCamera
     local frame = blurObj.Frame
     local part  = blurObj.Part
     local mesh  = blurObj.Mesh
-
     local absSize = frame.AbsoluteSize
     if absSize.X <= 1 or absSize.Y <= 1 then
         part.Transparency = 1
         return
     end
-
     part.Transparency = PART_TRANSPARENCY
-
     local corner0 = frame.AbsolutePosition + BLUR_SIZE
     local corner1 = corner0 + absSize - BLUR_SIZE * 2
-
     local ray0 = cam:ScreenPointToRay(corner0.X, corner0.Y, 1)
     local ray1 = cam:ScreenPointToRay(corner1.X, corner1.Y, 1)
-
     local planeOrigin = cam.CFrame.Position + cam.CFrame.LookVector * (0.05 - cam.NearPlaneZ)
     local planeNormal = cam.CFrame.LookVector
     local pos0 = rayPlaneIntersect(planeOrigin, planeNormal, ray0.Origin, ray0.Direction)
     local pos1 = rayPlaneIntersect(planeOrigin, planeNormal, ray1.Origin, ray1.Direction)
-
     pos0 = cam.CFrame:PointToObjectSpace(pos0)
     pos1 = cam.CFrame:PointToObjectSpace(pos1)
-
     local size   = pos1 - pos0
     local center = (pos0 + pos1) / 2
-
     mesh.Offset = center
     mesh.Scale  = size / PART_SIZE
 end
 
 function BlurredGui.updateAll()
     BLUR_OBJ.NearIntensity = START_INTENSITY
-
     for i = 1, #BlursList do
         updateGui(BlursList[i])
     end
-
     if #PartsList > 0 then
         local cframes = table.create(#BlursList, workspace.CurrentCamera.CFrame)
         workspace:BulkMoveTo(PartsList, cframes, Enum.BulkMoveMode.FireCFrameChanged)
     end
-
     BLUR_OBJ.FocusDistance = 0.25 - camera.NearPlaneZ
 end
 
@@ -145,7 +142,6 @@ function BlurredGui.new(frame, shape)
     blurPart.Material     = Enum.Material.Glass
     blurPart.Transparency = PART_TRANSPARENCY
     blurPart.Parent       = workspace.CurrentCamera
-
     local mesh
     if shape == "Rectangle" then
         mesh        = Instance.new("BlockMesh")
@@ -155,17 +151,14 @@ function BlurredGui.new(frame, shape)
         mesh.MeshType = Enum.MeshType.Sphere
         mesh.Parent   = blurPart
     end
-
     local new = setmetatable({
         Frame          = frame,
         Part           = blurPart,
         Mesh           = mesh,
         IgnoreGuiInset = true,
     }, BlurredGui)
-
     BlurObjects[new] = blurPart
     rebuildPartsList()
-
     return new
 end
 
@@ -175,7 +168,6 @@ function BlurredGui:Destroy()
     rebuildPartsList()
 end
 
--- Unbind any previous render step from a prior loadstring run
 pcall(function()
     RunService:UnbindFromRenderStep("UILibraryBlurUpdate")
 end)
@@ -300,7 +292,6 @@ end
 
 ------------------------------------------------------------------------
 -- SCREEN GUI
--- Remove stale instance from previous loadstring run before creating
 ------------------------------------------------------------------------
 local GUI_NAME = "UILibrary_v1"
 
@@ -341,8 +332,8 @@ end
 -- WINDOW
 ------------------------------------------------------------------------
 local W, H    = 780, 470
-local SIDE    = 180
-local HEAD    = 38
+local SIDE    = 170
+local HEAD    = 36
 local CORNER  = 6
 local WIN_POS = UDim2.new(0.5, -W / 2, 0.5, -H / 2)
 
@@ -359,9 +350,9 @@ local winClip = N("Frame", {
 Cor(winClip, CORNER)
 
 N("UIStroke", {
-    Color        = Color3.fromRGB(40, 44, 54),
+    Color        = Color3.fromRGB(0, 200, 120),
     Thickness    = 1,
-    Transparency = 0.2,
+    Transparency = 0.75,
     Parent       = winClip,
 })
 
@@ -416,11 +407,12 @@ N("Frame", {
     Parent           = hdrOuter,
 })
 
+-- Subtle bottom border on header
 N("Frame", {
     Size                   = UDim2.new(1, 0, 0, 1),
     Position               = UDim2.new(0, 0, 1, -1),
-    BackgroundColor3       = C.White,
-    BackgroundTransparency = 0.93,
+    BackgroundColor3       = C.Accent,
+    BackgroundTransparency = 0.7,
     BorderSizePixel        = 0,
     ZIndex                 = 7,
     Parent                 = hdrOuter,
@@ -435,22 +427,45 @@ local hdr = N("Frame", {
     Parent                 = hdrOuter,
 })
 
-local titleLbl = N("TextLabel", {
-    Size                   = UDim2.new(0.5, 0, 1, 0),
-    Position               = UDim2.new(0, 14, 0, 0),
+-- Title left side: white "Milenium" style with accent sub-text
+local titleFrame = N("Frame", {
+    Size                   = UDim2.new(0, 300, 1, 0),
+    Position               = UDim2.new(0, 12, 0, 0),
+    BackgroundTransparency = 1,
+    ZIndex                 = 8,
+    Parent                 = hdr,
+})
+HList(titleFrame, 5, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+
+local titleMain = N("TextLabel", {
+    Size                   = UDim2.new(0, 0, 1, 0),
+    AutomaticSize          = Enum.AutomaticSize.X,
     BackgroundTransparency = 1,
     Text                   = "MyUI",
     Font                   = Enum.Font.GothamBold,
     TextSize               = 13,
+    TextColor3             = C.White,
+    TextXAlignment         = Enum.TextXAlignment.Left,
+    ZIndex                 = 8,
+    Parent                 = titleFrame,
+})
+
+local titleSub = N("TextLabel", {
+    Size                   = UDim2.new(0, 0, 1, 0),
+    AutomaticSize          = Enum.AutomaticSize.X,
+    BackgroundTransparency = 1,
+    Text                   = "for Roblox",
+    Font                   = Enum.Font.Gotham,
+    TextSize               = 11,
     TextColor3             = C.Accent,
     TextXAlignment         = Enum.TextXAlignment.Left,
     ZIndex                 = 8,
-    Parent                 = hdr,
+    Parent                 = titleFrame,
 })
 
 local rF = N("Frame", {
-    Size                   = UDim2.new(0, 200, 1, 0),
-    Position               = UDim2.new(1, -206, 0, 0),
+    Size                   = UDim2.new(0, 220, 1, 0),
+    Position               = UDim2.new(1, -226, 0, 0),
     BackgroundTransparency = 1,
     ZIndex                 = 7,
     Parent                 = hdr,
@@ -458,28 +473,43 @@ local rF = N("Frame", {
 HList(rF, 8, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
 Pad(rF, 0, 0, 0, 8)
 
+-- Days online style label (muted)
 N("TextLabel", {
-    Size                   = UDim2.new(0, 170, 1, 0),
+    Size                   = UDim2.new(0, 30, 1, 0),
     BackgroundTransparency = 1,
-    Text                   = LocalPlayer.Name,
-    Font                   = Enum.Font.GothamSemibold,
+    Text                   = "∞",
+    Font                   = Enum.Font.GothamBold,
     TextSize               = 11,
-    TextColor3             = C.Accent,
+    TextColor3             = C.TextMuted,
     TextXAlignment         = Enum.TextXAlignment.Right,
     LayoutOrder            = 1,
     ZIndex                 = 8,
     Parent                 = rF,
 })
 
+N("TextLabel", {
+    Size                   = UDim2.new(0, 140, 1, 0),
+    BackgroundTransparency = 1,
+    Text                   = LocalPlayer.Name,
+    Font                   = Enum.Font.GothamBold,
+    TextSize               = 11,
+    TextColor3             = C.TextMain,
+    TextXAlignment         = Enum.TextXAlignment.Right,
+    LayoutOrder            = 2,
+    ZIndex                 = 8,
+    Parent                 = rF,
+})
+
 local avF = N("Frame", {
-    Size             = UDim2.new(0, 20, 0, 20),
-    BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+    Size             = UDim2.new(0, 22, 0, 22),
+    BackgroundColor3 = Color3.fromRGB(30, 38, 30),
     BorderSizePixel  = 0,
-    LayoutOrder      = 2,
+    LayoutOrder      = 3,
     ZIndex           = 8,
     Parent           = rF,
 })
-Cor(avF, 10)
+Cor(avF, 11)
+Stroke(avF, C.Accent, 1, 0.5)
 local avI = N("ImageLabel", {
     Size                   = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
@@ -487,7 +517,7 @@ local avI = N("ImageLabel", {
     ZIndex                 = 9,
     Parent                 = avF,
 })
-Cor(avI, 10)
+Cor(avI, 11)
 task.spawn(function() avI.Image = Headshot(LocalPlayer.UserId) end)
 
 Draggable(win, hdr)
@@ -503,6 +533,7 @@ local body = N("Frame", {
     Parent                 = win,
 })
 
+-- Sidebar
 local sidebar = N("ScrollingFrame", {
     Name                   = "Sidebar",
     Size                   = UDim2.new(0, SIDE, 1, 0),
@@ -515,14 +546,15 @@ local sidebar = N("ScrollingFrame", {
     ZIndex                 = 4,
     Parent                 = body,
 })
-VList(sidebar, 5)
-Pad(sidebar, 10, 10, 10, 10)
+VList(sidebar, 1)
+Pad(sidebar, 6, 6, 0, 0)
 
+-- Divider line between sidebar and main
 N("Frame", {
     Size                   = UDim2.new(0, 1, 1, 0),
     Position               = UDim2.new(0, SIDE, 0, 0),
-    BackgroundColor3       = C.White,
-    BackgroundTransparency = 0.97,
+    BackgroundColor3       = C.Accent,
+    BackgroundTransparency = 0.7,
     BorderSizePixel        = 0,
     ZIndex                 = 5,
     Parent                 = body,
@@ -537,8 +569,8 @@ local main = N("ScrollingFrame", {
     BackgroundColor3       = C.BgMain,
     BackgroundTransparency = MAIN_TRANS,
     BorderSizePixel        = 0,
-    ScrollBarThickness     = 3,
-    ScrollBarImageColor3   = C.BgInput,
+    ScrollBarThickness     = 2,
+    ScrollBarImageColor3   = C.AccentDim,
     CanvasSize             = UDim2.new(0, 0, 0, 0),
     AutomaticCanvasSize    = Enum.AutomaticSize.Y,
     ClipsDescendants       = false,
@@ -553,11 +585,18 @@ local allSideRows = {}
 
 local function selectPanel(entry)
     for _, e in ipairs(allSideRows) do
+        -- Deselect: dim text, hide accent bar, reset bg
         e.lbl.TextColor3             = C.TextMuted
-        e.dot.BackgroundTransparency = 1
+        e.lbl.Font                   = Enum.Font.Gotham
+        e.accentBar.BackgroundTransparency = 1
+        Tw(e.rowBtn, {BackgroundColor3 = C.BgSidebar, BackgroundTransparency = 1}, 0.1)
     end
+    -- Select: bright text, show accent bar, tinted bg
     entry.lbl.TextColor3             = C.TextMain
-    entry.dot.BackgroundTransparency = 0
+    entry.lbl.Font                   = Enum.Font.GothamSemibold
+    entry.accentBar.BackgroundTransparency = 0
+    Tw(entry.rowBtn, {BackgroundColor3 = Color3.fromRGB(28, 38, 28), BackgroundTransparency = 0}, 0.1)
+
     for _, pf in ipairs(allPanels) do
         pf.Visible = false
     end
@@ -587,10 +626,11 @@ end
 ------------------------------------------------------------------------
 local catOrder = 0
 local UILib    = {}
-UILib.Theme    = C   -- expose theme so calling scripts can safely read UILib.Theme.Accent
+UILib.Theme    = C
 
-function UILib.SetTitle(name)
-    titleLbl.Text = name or "MyUI"
+function UILib.SetTitle(name, sub)
+    titleMain.Text = name or "MyUI"
+    titleSub.Text  = sub  or ""
 end
 
 function UILib.Destroy()
@@ -616,20 +656,32 @@ function UILib.AddCategory(cfg)
 
     local catReg = {}
 
+    -- Outer wrapper (grows when open)
     local wrap = N("Frame", {
         Name                   = "Cat_" .. name,
-        Size                   = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3       = C.BgCard,
+        Size                   = UDim2.new(1, 0, 0, 32),
+        BackgroundColor3       = C.CatBg,
         BackgroundTransparency = 0,
         BorderSizePixel        = 0,
         ClipsDescendants       = true,
         LayoutOrder            = catOrder,
         Parent                 = sidebar,
     })
-    Cor(wrap, 4)
+    -- No corner radius – flat blocks like reference image
+    -- Subtle top/bottom separator
+    N("Frame", {
+        Size                   = UDim2.new(1, 0, 0, 1),
+        Position               = UDim2.new(0, 0, 0, 0),
+        BackgroundColor3       = Color3.fromRGB(0, 200, 120),
+        BackgroundTransparency = 0.85,
+        BorderSizePixel        = 0,
+        ZIndex                 = 3,
+        Parent                 = wrap,
+    })
 
+    -- Header button
     local hBtn = N("TextButton", {
-        Size                   = UDim2.new(1, 0, 0, 30),
+        Size                   = UDim2.new(1, 0, 0, 32),
         BackgroundTransparency = 1,
         Text                   = "",
         AutoButtonColor        = false,
@@ -637,39 +689,58 @@ function UILib.AddCategory(cfg)
         Parent                 = wrap,
     })
 
-    local ICON_SIZE = 14
-    local ICON_GAP  = 6
-    local BASE_LEFT = 10
-    local textLeft  = imageId and (BASE_LEFT + ICON_SIZE + ICON_GAP) or BASE_LEFT
+    -- Left accent icon / bullet
+    local accentIconBg = N("Frame", {
+        Size             = UDim2.new(0, 14, 0, 14),
+        Position         = UDim2.new(0, 10, 0.5, -7),
+        BackgroundColor3 = C.AccentDark,
+        BorderSizePixel  = 0,
+        ZIndex           = 6,
+        Parent           = hBtn,
+    })
+    Cor(accentIconBg, 3)
 
+    -- Small icon dot inside
+    N("Frame", {
+        Size             = UDim2.new(0, 6, 0, 6),
+        Position         = UDim2.new(0.5, -3, 0.5, -3),
+        BackgroundColor3 = C.Accent,
+        BorderSizePixel  = 0,
+        ZIndex           = 7,
+        Parent           = accentIconBg,
+    })
+
+    -- If custom image provided, overlay it
     if imageId then
         N("ImageLabel", {
-            Name                   = "CatIcon",
-            Size                   = UDim2.new(0, ICON_SIZE, 0, ICON_SIZE),
-            Position               = UDim2.new(0, BASE_LEFT, 0.5, -ICON_SIZE / 2),
+            Size                   = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
             Image                  = imageId,
-            ZIndex                 = 6,
-            Parent                 = hBtn,
+            ImageColor3            = C.Accent,
+            ZIndex                 = 8,
+            Parent                 = accentIconBg,
         })
     end
 
+    local TEXT_LEFT = 30
+
     local catLbl = N("TextLabel", {
-        Size                   = UDim2.new(1, -(textLeft + 18), 1, 0),
-        Position               = UDim2.new(0, textLeft, 0, 0),
+        Size                   = UDim2.new(1, -(TEXT_LEFT + 20), 1, 0),
+        Position               = UDim2.new(0, TEXT_LEFT, 0, 0),
         BackgroundTransparency = 1,
         Text                   = name,
-        Font                   = Enum.Font.GothamSemibold,
+        Font                   = Enum.Font.GothamBold,
         TextSize               = 11,
-        TextColor3             = C.TextMuted,
+        TextColor3             = C.TextMain,
         TextXAlignment         = Enum.TextXAlignment.Left,
         ZIndex                 = 6,
         Parent                 = hBtn,
     })
 
+    -- Chevron (right side)
     local chevF = N("Frame", {
         Size                   = UDim2.new(0, 10, 0, 6),
-        Position               = UDim2.new(1, -16, 0.5, -3),
+        Position               = UDim2.new(1, -14, 0.5, -3),
         BackgroundTransparency = 1,
         ZIndex                 = 6,
         Parent                 = hBtn,
@@ -693,10 +764,11 @@ function UILib.AddCategory(cfg)
         Parent           = chevF,
     }); Cor(cR, 1)
 
+    -- Sub-items container
     local subC = N("Frame", {
         Size                   = UDim2.new(1, 0, 0, 0),
-        Position               = UDim2.new(0, 0, 0, 30),
-        BackgroundColor3       = Color3.fromRGB(6, 7, 9),
+        Position               = UDim2.new(0, 0, 0, 32),
+        BackgroundColor3       = C.SubBg,
         BackgroundTransparency = 0,
         BorderSizePixel        = 0,
         Parent                 = wrap,
@@ -714,11 +786,13 @@ function UILib.AddCategory(cfg)
             end
         end
         local h = v and subLayout.AbsoluteContentSize.Y or 0
-        Tw(subC,   {Size       = UDim2.new(1, 0, 0, h)},          0.15, "Quad")
-        Tw(wrap,   {Size       = UDim2.new(1, 0, 0, 30 + h)},     0.15, "Quad")
-        Tw(catLbl, {TextColor3 = v and C.TextMain or C.TextMuted}, 0.12)
-        Tw(cL,     {Rotation   = v and -40 or  40},                0.15)
-        Tw(cR,     {Rotation   = v and  40 or -40},                0.15)
+        Tw(subC, {Size = UDim2.new(1, 0, 0, h)},      0.18, "Quad")
+        Tw(wrap, {Size = UDim2.new(1, 0, 0, 32 + h)}, 0.18, "Quad")
+        -- Chevron rotation
+        Tw(cL, {Rotation = v and -40 or  40}, 0.15)
+        Tw(cR, {Rotation = v and  40 or -40}, 0.15)
+        -- Category label color
+        Tw(catLbl, {TextColor3 = v and C.Accent or C.TextMain}, 0.12)
     end
 
     catReg.setOpen   = setOpen
@@ -726,9 +800,11 @@ function UILib.AddCategory(cfg)
     table.insert(allCategories, catReg)
 
     hBtn.MouseButton1Click:Connect(function() setOpen(not isOpen) end)
-    hBtn.MouseEnter:Connect(function() Tw(catLbl, {TextColor3 = C.TextMain}, 0.1) end)
+    hBtn.MouseEnter:Connect(function()
+        Tw(wrap, {BackgroundColor3 = Color3.fromRGB(34, 42, 34)}, 0.1)
+    end)
     hBtn.MouseLeave:Connect(function()
-        if not isOpen then Tw(catLbl, {TextColor3 = C.TextMuted}, 0.1) end
+        Tw(wrap, {BackgroundColor3 = C.CatBg}, 0.1)
     end)
 
     local subCount = 0
@@ -738,37 +814,51 @@ function UILib.AddCategory(cfg)
         subCount = subCount + 1
         local sc = subCount
 
-        local row = N("TextButton", {
-            Size                   = UDim2.new(1, 0, 0, 24),
+        -- Tab row
+        local rowBtn = N("TextButton", {
+            Size                   = UDim2.new(1, 0, 0, 26),
+            BackgroundColor3       = C.BgSidebar,
             BackgroundTransparency = 1,
             Text                   = "",
             AutoButtonColor        = false,
             LayoutOrder            = sc,
-            ZIndex                 = 6,
+            ZIndex                 = 5,
             Parent                 = subC,
         })
 
-        local dot = N("Frame", {
-            Size                   = UDim2.new(0, 3, 0, 3),
-            Position               = UDim2.new(0, 16, 0.5, -1),
+        -- Left accent bar (shown when selected)
+        local accentBar = N("Frame", {
+            Size                   = UDim2.new(0, 2, 0.65, 0),
+            Position               = UDim2.new(0, 0, 0.175, 0),
             BackgroundColor3       = C.Accent,
-            BackgroundTransparency = 1,
+            BackgroundTransparency = 1,  -- hidden by default
             BorderSizePixel        = 0,
-            ZIndex                 = 7,
-            Parent                 = row,
-        }); Cor(dot, 2)
+            ZIndex                 = 6,
+            Parent                 = rowBtn,
+        })
+
+        -- Small bullet dot (always visible, dimmer when not selected)
+        local dot = N("Frame", {
+            Size             = UDim2.new(0, 4, 0, 4),
+            Position         = UDim2.new(0, 14, 0.5, -2),
+            BackgroundColor3 = C.TextMuted,
+            BorderSizePixel  = 0,
+            ZIndex           = 7,
+            Parent           = rowBtn,
+        })
+        Cor(dot, 2)
 
         local lbl = N("TextLabel", {
-            Size                   = UDim2.new(1, -30, 1, 0),
-            Position               = UDim2.new(0, 26, 0, 0),
+            Size                   = UDim2.new(1, -26, 1, 0),
+            Position               = UDim2.new(0, 24, 0, 0),
             BackgroundTransparency = 1,
             Text                   = tName,
             Font                   = Enum.Font.Gotham,
             TextSize               = 11,
             TextColor3             = C.TextMuted,
             TextXAlignment         = Enum.TextXAlignment.Left,
-            ZIndex                 = 7,
-            Parent                 = row,
+            ZIndex                 = 6,
+            Parent                 = rowBtn,
         })
 
         local panelFrame = N("Frame", {
@@ -810,26 +900,42 @@ function UILib.AddCategory(cfg)
         local col2 = makeCol(2)
 
         table.insert(allPanels, panelFrame)
-        local entry = {lbl = lbl, dot = dot, panelFrame = panelFrame}
+        local entry = {
+            lbl        = lbl,
+            dot        = dot,
+            accentBar  = accentBar,
+            rowBtn     = rowBtn,
+            panelFrame = panelFrame,
+        }
         table.insert(allSideRows, entry)
 
         if #allPanels == 1 then
-            lbl.TextColor3             = C.TextMain
-            dot.BackgroundTransparency = 0
-            panelFrame.Visible         = true
+            -- Auto-select first tab
+            lbl.TextColor3               = C.TextMain
+            lbl.Font                     = Enum.Font.GothamSemibold
+            dot.BackgroundColor3         = C.Accent
+            accentBar.BackgroundTransparency = 0
+            rowBtn.BackgroundColor3      = Color3.fromRGB(28, 38, 28)
+            rowBtn.BackgroundTransparency = 0
+            panelFrame.Visible           = true
             setOpen(true)
         end
 
-        row.MouseButton1Click:Connect(function()
+        rowBtn.MouseButton1Click:Connect(function()
             if not isOpen then setOpen(true) end
+            -- Update dot colors for all rows
+            for _, e in ipairs(allSideRows) do
+                e.dot.BackgroundColor3 = C.TextMuted
+            end
+            dot.BackgroundColor3 = C.Accent
             selectPanel(entry)
         end)
-        row.MouseEnter:Connect(function()
+        rowBtn.MouseEnter:Connect(function()
             if lbl.TextColor3 ~= C.TextMain then
-                Tw(lbl, {TextColor3 = Color3.fromRGB(150, 156, 166)}, 0.1)
+                Tw(lbl, {TextColor3 = C.TabHover}, 0.1)
             end
         end)
-        row.MouseLeave:Connect(function()
+        rowBtn.MouseLeave:Connect(function()
             if lbl.TextColor3 ~= C.TextMain then
                 Tw(lbl, {TextColor3 = C.TextMuted}, 0.1)
             end
@@ -840,12 +946,15 @@ function UILib.AddCategory(cfg)
             if isOpen then
                 local h = subLayout.AbsoluteContentSize.Y
                 subC.Size = UDim2.new(1, 0, 0, h)
-                wrap.Size = UDim2.new(1, 0, 0, 30 + h)
+                wrap.Size = UDim2.new(1, 0, 0, 32 + h)
             end
         end)
 
         local tabAPI = {}
 
+        ------------------------------------------------------------------
+        -- MAKE CARD
+        ------------------------------------------------------------------
         local function makeCard(colFrame, cardTitle)
             local card = N("Frame", {
                 Name                   = "Card_" .. cardTitle,
@@ -857,11 +966,18 @@ function UILib.AddCategory(cfg)
                 ClipsDescendants       = false,
                 Parent                 = colFrame,
             })
-            Cor(card, 6)
-            Stroke(card, Color3.fromRGB(255, 255, 255), 1, 0.99)
+            Cor(card, 4)
+            -- Subtle green-tinted border
+            N("UIStroke", {
+                Color        = Color3.fromRGB(0, 180, 100),
+                Thickness    = 1,
+                Transparency = 0.88,
+                Parent       = card,
+            })
             Pad(card, 10, 12, 12, 12)
-            VList(card, 9)
+            VList(card, 8)
 
+            -- Card title row
             local tRow = N("Frame", {
                 Name                   = "TR",
                 Size                   = UDim2.new(1, 0, 0, 20),
@@ -869,21 +985,34 @@ function UILib.AddCategory(cfg)
                 LayoutOrder            = 0,
                 Parent                 = card,
             })
+            -- Small accent icon before title
+            local titleIcon = N("Frame", {
+                Size             = UDim2.new(0, 8, 0, 8),
+                Position         = UDim2.new(0, 0, 0.5, -4),
+                BackgroundColor3 = C.Accent,
+                BorderSizePixel  = 0,
+                ZIndex           = 4,
+                Parent           = tRow,
+            })
+            Cor(titleIcon, 2)
+
             N("TextLabel", {
-                Size                   = UDim2.new(1, 0, 1, 0),
+                Size                   = UDim2.new(1, -14, 1, 0),
+                Position               = UDim2.new(0, 14, 0, 0),
                 BackgroundTransparency = 1,
                 Text                   = cardTitle,
-                Font                   = Enum.Font.GothamSemibold,
+                Font                   = Enum.Font.GothamBold,
                 TextSize               = 11,
                 TextColor3             = C.TextMain,
                 TextXAlignment         = Enum.TextXAlignment.Left,
                 Parent                 = tRow,
             })
+            -- Bottom border under title
             N("Frame", {
                 Size                   = UDim2.new(1, 0, 0, 1),
                 Position               = UDim2.new(0, 0, 1, -1),
-                BackgroundColor3       = C.White,
-                BackgroundTransparency = 0.97,
+                BackgroundColor3       = C.Accent,
+                BackgroundTransparency = 0.82,
                 BorderSizePixel        = 0,
                 Parent                 = tRow,
             })
@@ -898,7 +1027,7 @@ function UILib.AddCategory(cfg)
             local function CtrlRow(labelTxt, disabled)
                 local row2 = N("Frame", {
                     Name                   = "CR_" .. labelTxt,
-                    Size                   = UDim2.new(1, 0, 0, 18),
+                    Size                   = UDim2.new(1, 0, 0, 20),
                     BackgroundTransparency = 1,
                     LayoutOrder            = nextN(),
                     Parent                 = card,
@@ -917,9 +1046,9 @@ function UILib.AddCategory(cfg)
                 return row2
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- TOGGLE
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddToggle(cfg2)
                 cfg2           = cfg2 or {}
                 local lbl2     = cfg2.Label    or "Toggle"
@@ -930,34 +1059,34 @@ function UILib.AddCategory(cfg)
 
                 local row2 = CtrlRow(lbl2, disabled)
 
-                local PW, PH = 24, 12
-                local TD     = 8
+                local PW, PH = 26, 13
+                local TD     = 9
                 local pill   = N("Frame", {
-                    Size                   = UDim2.new(0, PW, 0, PH),
-                    Position               = UDim2.new(1, -PW, 0.5, -PH / 2),
-                    BackgroundColor3       = Color3.fromRGB(30, 34, 42),
-                    BorderSizePixel        = 0,
+                    Size             = UDim2.new(0, PW, 0, PH),
+                    Position         = UDim2.new(1, -PW, 0.5, -PH / 2),
+                    BackgroundColor3 = C.ToggleOff,
+                    BorderSizePixel  = 0,
                     BackgroundTransparency = disabled and 0.5 or 0,
-                    ZIndex                 = 5,
-                    Parent                 = row2,
+                    ZIndex           = 5,
+                    Parent           = row2,
                 })
                 Cor(pill, math.floor(PH / 2))
 
                 local thumb = N("Frame", {
-                    Size                   = UDim2.new(0, TD, 0, TD),
-                    Position               = UDim2.new(0, 2, 0.5, -TD / 2),
-                    BackgroundColor3       = Color3.fromRGB(75, 82, 96),
-                    BorderSizePixel        = 0,
+                    Size             = UDim2.new(0, TD, 0, TD),
+                    Position         = UDim2.new(0, 2, 0.5, -TD / 2),
+                    BackgroundColor3 = C.ToggleThumb,
+                    BorderSizePixel  = 0,
                     BackgroundTransparency = disabled and 0.5 or 0,
-                    ZIndex                 = 6,
-                    Parent                 = pill,
+                    ZIndex           = 6,
+                    Parent           = pill,
                 })
                 Cor(thumb, math.floor(TD / 2))
 
                 local function setT(v, anim)
                     state     = v
-                    local bg  = v and C.Accent or Color3.fromRGB(30, 34, 42)
-                    local tc  = v and C.White  or Color3.fromRGB(75, 82, 96)
+                    local bg  = v and C.Accent or C.ToggleOff
+                    local tc  = v and C.White  or C.ToggleThumb
                     local pos = v
                         and UDim2.new(0, PW - TD - 2, 0.5, -TD / 2)
                         or  UDim2.new(0, 2, 0.5, -TD / 2)
@@ -991,9 +1120,9 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
-            -- SLIDER
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
+            -- SLIDER  (matches image: green fill, value right-aligned)
+            ------------------------------------------------------------
             function cAPI:AddSlider(cfg2)
                 cfg2       = cfg2 or {}
                 local lbl2 = cfg2.Label    or "Slider"
@@ -1007,45 +1136,46 @@ function UILib.AddCategory(cfg)
 
                 local block = N("Frame", {
                     Name                   = "Sld_" .. lbl2,
-                    Size                   = UDim2.new(1, 0, 0, 36),
+                    Size                   = UDim2.new(1, 0, 0, 34),
                     BackgroundTransparency = 1,
                     LayoutOrder            = nextN(),
                     Parent                 = card,
                 })
 
+                -- Label row with value on right
                 local hr = N("Frame", {
                     Size                   = UDim2.new(1, 0, 0, 16),
                     BackgroundTransparency = 1,
                     Parent                 = block,
                 })
                 N("TextLabel", {
-                    Size                   = UDim2.new(0.6, 0, 1, 0),
+                    Size                   = UDim2.new(0.7, 0, 1, 0),
                     BackgroundTransparency = 1,
                     Text                   = lbl2,
-                    Font                   = Enum.Font.GothamSemibold,
+                    Font                   = Enum.Font.Gotham,
                     TextSize               = 11,
                     TextColor3             = C.TextMain,
                     TextXAlignment         = Enum.TextXAlignment.Left,
                     Parent                 = hr,
                 })
                 local vLbl = N("TextLabel", {
-                    Size                   = UDim2.new(0.4, 0, 1, 0),
-                    Position               = UDim2.new(0.6, 0, 0, 0),
+                    Size                   = UDim2.new(0.3, 0, 1, 0),
+                    Position               = UDim2.new(0.7, 0, 0, 0),
                     BackgroundTransparency = 1,
                     Text                   = string.format("%." .. dec .. "f%s", val, suf),
-                    Font                   = Enum.Font.Code,
+                    Font                   = Enum.Font.Gotham,
                     TextSize               = 11,
                     TextColor3             = C.TextMuted,
                     TextXAlignment         = Enum.TextXAlignment.Right,
                     Parent                 = hr,
                 })
 
-                local TH = 10
+                local TH = 4
 
                 local trackBg = N("Frame", {
                     Size             = UDim2.new(1, 0, 0, TH),
-                    Position         = UDim2.new(0, 0, 0, 22),
-                    BackgroundColor3 = Color3.fromRGB(28, 34, 38),
+                    Position         = UDim2.new(0, 0, 0, 24),
+                    BackgroundColor3 = C.SliderTrack,
                     BorderSizePixel  = 0,
                     ZIndex           = 2,
                     Parent           = block,
@@ -1063,8 +1193,8 @@ function UILib.AddCategory(cfg)
                 Cor(fill, TH / 2)
 
                 local hit = N("TextButton", {
-                    Size                   = UDim2.new(1, 0, 0, 28),
-                    Position               = UDim2.new(0, 0, 0.5, -14),
+                    Size                   = UDim2.new(1, 0, 0, 20),
+                    Position               = UDim2.new(0, 0, 0.5, -10),
                     BackgroundTransparency = 1,
                     Text                   = "",
                     ZIndex                 = 6,
@@ -1109,9 +1239,9 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- HOLD KEYBIND
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddHoldKeybind(cfg2)
                 cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label    or "Keybind"
@@ -1122,7 +1252,7 @@ function UILib.AddCategory(cfg)
 
                 local row2 = CtrlRow(lbl2, false)
 
-                local CHIP_W  = 38
+                local CHIP_W  = 42
                 local keyChip = N("TextButton", {
                     Size             = UDim2.new(0, CHIP_W, 0, 16),
                     Position         = UDim2.new(1, -CHIP_W, 0.5, -8),
@@ -1137,7 +1267,7 @@ function UILib.AddCategory(cfg)
                     Parent           = row2,
                 })
                 Cor(keyChip, 2)
-                Stroke(keyChip, C.White, 1, 0.96)
+                Stroke(keyChip, C.Accent, 1, 0.88)
 
                 keyChip.MouseButton1Click:Connect(function()
                     if listen then return end
@@ -1170,9 +1300,9 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- TOGGLE KEYBIND
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddToggleKeybind(cfg2)
                 cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label   or "Toggle"
@@ -1185,7 +1315,7 @@ function UILib.AddCategory(cfg)
 
                 local row2 = N("Frame", {
                     Name                   = "TKR_" .. lbl2,
-                    Size                   = UDim2.new(1, 0, 0, 18),
+                    Size                   = UDim2.new(1, 0, 0, 20),
                     BackgroundTransparency = 1,
                     LayoutOrder            = nextN(),
                     Parent                 = card,
@@ -1202,7 +1332,7 @@ function UILib.AddCategory(cfg)
                     Parent                 = row2,
                 })
 
-                local CHIP_W  = 38
+                local CHIP_W  = 42
                 local keyChip = N("TextButton", {
                     Size             = UDim2.new(0, CHIP_W, 0, 16),
                     Position         = UDim2.new(1, -CHIP_W, 0.5, -8),
@@ -1217,14 +1347,14 @@ function UILib.AddCategory(cfg)
                     Parent           = row2,
                 })
                 Cor(keyChip, 2)
-                Stroke(keyChip, C.White, 1, 0.96)
+                Stroke(keyChip, C.Accent, 1, 0.88)
 
-                local PW, PH = 24, 12
-                local TD     = 8
+                local PW, PH = 26, 13
+                local TD     = 9
                 local pill   = N("Frame", {
                     Size             = UDim2.new(0, PW, 0, PH),
                     Position         = UDim2.new(1, -CHIP_W - PW - 6, 0.5, -PH / 2),
-                    BackgroundColor3 = Color3.fromRGB(30, 34, 42),
+                    BackgroundColor3 = C.ToggleOff,
                     BorderSizePixel  = 0,
                     ZIndex           = 5,
                     Parent           = row2,
@@ -1234,7 +1364,7 @@ function UILib.AddCategory(cfg)
                 local thumb = N("Frame", {
                     Size             = UDim2.new(0, TD, 0, TD),
                     Position         = UDim2.new(0, 2, 0.5, -TD / 2),
-                    BackgroundColor3 = Color3.fromRGB(75, 82, 96),
+                    BackgroundColor3 = C.ToggleThumb,
                     BorderSizePixel  = 0,
                     ZIndex           = 6,
                     Parent           = pill,
@@ -1243,8 +1373,8 @@ function UILib.AddCategory(cfg)
 
                 local function setState(v, anim)
                     state     = v
-                    local bg  = v and C.Accent or Color3.fromRGB(30, 34, 42)
-                    local tc  = v and C.White  or Color3.fromRGB(75, 82, 96)
+                    local bg  = v and C.Accent or C.ToggleOff
+                    local tc  = v and C.White  or C.ToggleThumb
                     local pos = v
                         and UDim2.new(0, PW - TD - 2, 0.5, -TD / 2)
                         or  UDim2.new(0, 2, 0.5, -TD / 2)
@@ -1304,9 +1434,9 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- DROPDOWN
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddDropdown(cfg2)
                 cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label    or "Dropdown"
@@ -1334,6 +1464,7 @@ function UILib.AddCategory(cfg)
                     Parent           = row2,
                 })
                 Cor(chip, 2)
+                Stroke(chip, C.Accent, 1, 0.85)
 
                 local chevCont = N("Frame", {
                     Size                   = UDim2.new(0, 10, 1, 0),
@@ -1365,7 +1496,7 @@ function UILib.AddCategory(cfg)
                 local BASE_Z     = nextPopupZ()
                 local listF      = N("Frame", {
                     Size             = UDim2.new(0, LIST_W, 0, 0),
-                    BackgroundColor3 = C.BgCard,
+                    BackgroundColor3 = Color3.fromRGB(22, 28, 22),
                     BorderSizePixel  = 0,
                     Visible          = false,
                     ZIndex           = BASE_Z,
@@ -1373,9 +1504,9 @@ function UILib.AddCategory(cfg)
                 })
                 Cor(listF, 4)
                 N("UIStroke", {
-                    Color        = Color3.fromRGB(34, 38, 47),
+                    Color        = C.Accent,
                     Thickness    = 1,
-                    Transparency = 0,
+                    Transparency = 0.75,
                     Parent       = listF,
                 })
 
@@ -1384,7 +1515,7 @@ function UILib.AddCategory(cfg)
                     BackgroundTransparency = 1,
                     BorderSizePixel        = 0,
                     ScrollBarThickness     = 2,
-                    ScrollBarImageColor3   = C.BgInput,
+                    ScrollBarImageColor3   = C.AccentDim,
                     CanvasSize             = UDim2.new(0, 0, 0, 0),
                     AutomaticCanvasSize    = Enum.AutomaticSize.Y,
                     ZIndex                 = BASE_Z + 1,
@@ -1434,7 +1565,7 @@ function UILib.AddCategory(cfg)
                 for i, opt in ipairs(opts) do
                     local ob = N("TextButton", {
                         Size             = UDim2.new(1, 0, 0, 22),
-                        BackgroundColor3 = C.BgCard,
+                        BackgroundColor3 = Color3.fromRGB(22, 28, 22),
                         BorderSizePixel  = 0,
                         Text             = opt,
                         Font             = Enum.Font.Gotham,
@@ -1450,7 +1581,7 @@ function UILib.AddCategory(cfg)
                         Tw(ob, {BackgroundColor3 = C.BgInput}, 0.08)
                     end)
                     ob.MouseLeave:Connect(function()
-                        Tw(ob, {BackgroundColor3 = C.BgCard}, 0.08)
+                        Tw(ob, {BackgroundColor3 = Color3.fromRGB(22, 28, 22)}, 0.08)
                     end)
                     ob.MouseButton1Click:Connect(function()
                         sel = opt; chip.Text = opt
@@ -1481,9 +1612,9 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- COLOR PICKER
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddColorPicker(cfg2)
                 cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label    or "Color"
@@ -1504,13 +1635,13 @@ function UILib.AddCategory(cfg)
                     Parent           = row2,
                 })
                 Cor(prev, 2)
-                Stroke(prev, C.White, 1, 0.82)
+                Stroke(prev, C.Accent, 1, 0.75)
 
                 local BASE_Z = nextPopupZ()
                 local pop    = N("Frame", {
                     Size             = UDim2.new(0, 120, 0, 0),
                     AutomaticSize    = Enum.AutomaticSize.Y,
-                    BackgroundColor3 = C.BgCard,
+                    BackgroundColor3 = Color3.fromRGB(22, 28, 22),
                     BorderSizePixel  = 0,
                     Visible          = false,
                     ZIndex           = BASE_Z,
@@ -1518,9 +1649,9 @@ function UILib.AddCategory(cfg)
                 })
                 Cor(pop, 4)
                 N("UIStroke", {
-                    Color        = Color3.fromRGB(34, 38, 47),
+                    Color        = C.Accent,
                     Thickness    = 1,
-                    Transparency = 0,
+                    Transparency = 0.75,
                     Parent       = pop,
                 })
                 Pad(pop, 6, 6, 6, 6)
@@ -1566,7 +1697,7 @@ function UILib.AddCategory(cfg)
                     })
                     local tk = N("Frame", {
                         Size             = UDim2.new(1, 0, 0, 3),
-                        BackgroundColor3 = C.BgInput,
+                        BackgroundColor3 = C.SliderTrack,
                         BorderSizePixel  = 0,
                         ZIndex           = BASE_Z + 1,
                         Parent           = sr,
@@ -1574,20 +1705,12 @@ function UILib.AddCategory(cfg)
                     Cor(tk, 1)
                     local fl = N("Frame", {
                         Size             = UDim2.new(initV / 255, 0, 1, 0),
-                        BackgroundColor3 = Color3.fromRGB(75, 82, 96),
+                        BackgroundColor3 = C.Accent,
                         BorderSizePixel  = 0,
                         ZIndex           = BASE_Z + 2,
                         Parent           = tk,
                     })
                     Cor(fl, 1)
-                    N("Frame", {
-                        Size             = UDim2.new(0, 6, 0, 6),
-                        Position         = UDim2.new(1, -3, 0.5, -3),
-                        BackgroundColor3 = C.White,
-                        BorderSizePixel  = 0,
-                        ZIndex           = BASE_Z + 3,
-                        Parent           = fl,
-                    })
                     local ht = N("TextButton", {
                         Size                   = UDim2.new(1, 0, 0, 14),
                         Position               = UDim2.new(0, 0, 0.5, -7),
@@ -1665,15 +1788,15 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- STATUS BOX
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddStatus(cfg2)
-                cfg2      = cfg2 or {}
+                cfg2       = cfg2 or {}
                 local text = cfg2.Text or "Inactive"
 
                 local box = N("Frame", {
-                    Size             = UDim2.new(1, 0, 0, 24),
+                    Size             = UDim2.new(1, 0, 0, 22),
                     BackgroundColor3 = C.BgInput,
                     BorderSizePixel  = 0,
                     LayoutOrder      = nextN(),
@@ -1697,8 +1820,8 @@ function UILib.AddCategory(cfg)
                 local api = {}
                 function api:SetActive(v, msg)
                     if v then
-                        Tw(box, {BackgroundColor3 = Color3.fromRGB(18, 48, 38)}, 0.15)
-                        lbl3.TextColor3 = C.White
+                        Tw(box, {BackgroundColor3 = Color3.fromRGB(10, 40, 25)}, 0.15)
+                        lbl3.TextColor3 = C.Accent
                     else
                         Tw(box, {BackgroundColor3 = C.BgInput}, 0.15)
                         lbl3.TextColor3 = C.TextMuted
@@ -1709,23 +1832,23 @@ function UILib.AddCategory(cfg)
                 return api
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- SEPARATOR
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddSeparator()
                 N("Frame", {
                     Size                   = UDim2.new(1, 0, 0, 1),
-                    BackgroundColor3       = C.White,
-                    BackgroundTransparency = 0.97,
+                    BackgroundColor3       = C.Accent,
+                    BackgroundTransparency = 0.85,
                     BorderSizePixel        = 0,
                     LayoutOrder            = nextN(),
                     Parent                 = card,
                 })
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- LABEL
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddLabel(cfg2)
                 cfg2 = cfg2 or {}
                 N("TextLabel", {
@@ -1742,9 +1865,9 @@ function UILib.AddCategory(cfg)
                 })
             end
 
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             -- BUTTON
-            ----------------------------------------------------------------
+            ------------------------------------------------------------
             function cAPI:AddButton(cfg2)
                 cfg2       = cfg2 or {}
                 local lbl4 = cfg2.Label    or "Button"
@@ -1752,7 +1875,7 @@ function UILib.AddCategory(cfg)
 
                 local btn = N("TextButton", {
                     Size             = UDim2.new(1, 0, 0, 24),
-                    BackgroundColor3 = C.BtnBg,
+                    BackgroundColor3 = C.AccentDark,
                     BorderSizePixel  = 0,
                     Text             = lbl4,
                     Font             = Enum.Font.GothamSemibold,
@@ -1763,18 +1886,19 @@ function UILib.AddCategory(cfg)
                     Parent           = card,
                 })
                 Cor(btn, 4)
+                Stroke(btn, C.Accent, 1, 0.7)
 
                 btn.MouseEnter:Connect(function()
-                    Tw(btn, {BackgroundColor3 = C.BtnBgHover}, 0.1)
+                    Tw(btn, {BackgroundColor3 = Color3.fromRGB(0, 60, 38)}, 0.1)
                 end)
                 btn.MouseLeave:Connect(function()
-                    Tw(btn, {BackgroundColor3 = C.BtnBg}, 0.1)
+                    Tw(btn, {BackgroundColor3 = C.AccentDark}, 0.1)
                 end)
                 btn.MouseButton1Down:Connect(function()
-                    Tw(btn, {BackgroundColor3 = C.BtnBgDown}, 0.08)
+                    Tw(btn, {BackgroundColor3 = C.AccentDim}, 0.08)
                 end)
                 btn.MouseButton1Up:Connect(function()
-                    Tw(btn, {BackgroundColor3 = C.BtnBgHover}, 0.08)
+                    Tw(btn, {BackgroundColor3 = Color3.fromRGB(0, 60, 38)}, 0.08)
                 end)
                 btn.MouseButton1Click:Connect(cb)
                 return {}
@@ -1796,10 +1920,7 @@ function UILib.AddCategory(cfg)
 end -- UILib.AddCategory
 
 ------------------------------------------------------------------------
--- RETURN  (loadstring(...)() receives this table)
-------------------------------------------------------------------------
-------------------------------------------------------------------------
--- RETURN  (loadstring(...)() receives this table)
+-- BLUR INIT
 ------------------------------------------------------------------------
 task.defer(function()
     RunService.Heartbeat:Wait()
