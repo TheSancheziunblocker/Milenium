@@ -109,45 +109,82 @@ Players.PlayerAdded:Connect(CreateESP)
 Players.PlayerRemoving:Connect(RemoveESP)
 for _, player in pairs(Players:GetPlayers()) do if player ~= LocalPlayer then CreateESP(player) end end
 
--- UI Initialization
-local Library = loadstring(game:HttpGet("https://pastebin.com/raw/anEMwUUG", true))()
-local Window = Library:CreateWindow("PIPELINE.AIM")
+------------------------------------------------------------------------
+-- UI Initialization (New UI Library)
+------------------------------------------------------------------------
+local UILib = loadstring(game:HttpGet("https://raw.githubusercontent.com/TheSancheziunblocker/Milenium/refs/heads/main/Mainui.lua", true))()
 
--- Combat Tab
-local CombatTab = Window:CreateTab("Combat")
-CombatTab:CreateToggle("Enable Aimbot", true, function(v) AimSettings.Enabled = v end)
-CombatTab:CreateDropdown("Target Part", {"Head", "Torso"}, "Head", false, function(v) AimSettings.TargetPart = v end)
-CombatTab:CreateToggle("Show FOV Circle", false, function(v) AimSettings.ShowFOV = v; FOVCircle.Visible = v end)
-CombatTab:CreateSlider("FOV Radius", 50, 1000, 400, function(v) AimSettings.FieldOfView = v; FOVCircle.Radius = v end)
-CombatTab:CreateToggle("Team Check", true, function(v) AimSettings.TeamCheck = v end)
-CombatTab:CreateToggle("Wall Check", true, function(v) AimSettings.WallCheck = v end)
-CombatTab:CreateSlider("Aim Smoothing", 0, 100, 50, function(v) AimSettings.Smoothing = v/100 end)
+UILib.SetTitle("PIPELINE.AIM")
 
--- Visuals Tab
-local VisualsTab = Window:CreateTab("Visuals")
-VisualsTab:CreateToggle("Enable ESP", true, function(v) VisualSettings.ESPEnabled = v end)
-VisualsTab:CreateToggle("Highlight Outline", true, function(v) VisualSettings.Highlight = v end)
-VisualsTab:CreateToggle("Skeleton ESP", true, function(v) VisualSettings.Skeleton = v end)
-VisualsTab:CreateToggle("Names", true, function(v) VisualSettings.Names = v end)
-VisualsTab:CreateToggle("Distance", true, function(v) VisualSettings.Distance = v end)
-VisualsTab:CreateToggle("Tracers", false, function(v) VisualSettings.Tracers = v end)
-VisualsTab:CreateDropdown("ESP Color Theme", {"White", "Rainbow", "Cyber Purple", "Neon Green", "Fire Orange"}, "White", false, function(v)
-    VisualSettings.Rainbow = false
-    if v == "White" then VisualSettings.Color = Color3.fromRGB(255, 255, 255)
-    elseif v == "Rainbow" then VisualSettings.Rainbow = true
-    elseif v == "Cyber Purple" then VisualSettings.Color = Color3.fromRGB(187, 0, 255)
-    elseif v == "Neon Green" then VisualSettings.Color = Color3.fromRGB(0, 255, 100)
-    elseif v == "Fire Orange" then VisualSettings.Color = Color3.fromRGB(255, 100, 0)
-    end
-end)
+-- ==================== AIMBOT CATEGORY ====================
+local CatAimbot = UILib.AddCategory({Name = "Aimbot", Image = 6031280882})
+local GeneralTab = CatAimbot:AddTab("General")
 
--- Visual Effects Tab
-local EffectsTab = Window:CreateTab("Visual Effects")
-EffectsTab:CreateToggle("Weapon Forcefield", false, function(v) VisualSettings.WeaponEffect = v end)
-EffectsTab:CreateToggle("Arms Forcefield", false, function(v) VisualSettings.ArmsEffect = v end)
-EffectsTab:CreateDropdown("Effect Mode", {"Rainbow", "Cyber Green", "Purple", "Fire Orange"}, "Rainbow", false, function(v) VisualSettings.EffectMode = v end)
+-- Aimbot Card
+local aimCard = GeneralTab:AddCard(1, "Aimbot")
+aimCard:AddToggle({Label = "Enable Aimbot", Default = true,
+    Callback = function(v) AimSettings.Enabled = v end})
+aimCard:AddDropdown({Label = "Target Part",
+    Options = {"Head", "Torso"}, Default = "Head",
+    Callback = function(v) AimSettings.TargetPart = v end})
+aimCard:AddToggle({Label = "Team Check", Default = true,
+    Callback = function(v) AimSettings.TeamCheck = v end})
+aimCard:AddToggle({Label = "Wall Check", Default = true,
+    Callback = function(v) AimSettings.WallCheck = v end})
+aimCard:AddSlider({Label = "Aim Smoothing", Min = 0, Max = 1, Default = 0.5, Decimals = 2,
+    Callback = function(v) AimSettings.Smoothing = v end})
 
+-- FOV Card
+local fovCard = GeneralTab:AddCard(2, "FOV")
+fovCard:AddToggle({Label = "Show FOV Circle", Default = false,
+    Callback = function(v) AimSettings.ShowFOV = v; FOVCircle.Visible = v end})
+fovCard:AddSlider({Label = "FOV Radius", Min = 50, Max = 1000, Default = 400, Decimals = 0,
+    Callback = function(v) AimSettings.FieldOfView = v; FOVCircle.Radius = v end})
+
+-- ==================== VISUALS CATEGORY ====================
+local CatVisuals = UILib.AddCategory({Name = "Visuals", Image = 6031280883})
+local ESPTab = CatVisuals:AddTab("ESP")
+
+-- ESP Card
+local espCard = ESPTab:AddCard(1, "ESP")
+espCard:AddToggle({Label = "Enable ESP", Default = true,
+    Callback = function(v) VisualSettings.ESPEnabled = v end})
+espCard:AddToggle({Label = "Highlight Outline", Default = true,
+    Callback = function(v) VisualSettings.Highlight = v end})
+espCard:AddToggle({Label = "Skeleton ESP", Default = true,
+    Callback = function(v) VisualSettings.Skeleton = v end})
+espCard:AddToggle({Label = "Names", Default = true,
+    Callback = function(v) VisualSettings.Names = v end})
+espCard:AddToggle({Label = "Distance", Default = true,
+    Callback = function(v) VisualSettings.Distance = v end})
+espCard:AddToggle({Label = "Tracers", Default = false,
+    Callback = function(v) VisualSettings.Tracers = v end})
+espCard:AddDropdown({Label = "ESP Color Theme",
+    Options = {"White", "Rainbow", "Cyber Purple", "Neon Green", "Fire Orange"}, Default = "White",
+    Callback = function(v)
+        VisualSettings.Rainbow = false
+        if v == "White" then VisualSettings.Color = Color3.fromRGB(255, 255, 255)
+        elseif v == "Rainbow" then VisualSettings.Rainbow = true
+        elseif v == "Cyber Purple" then VisualSettings.Color = Color3.fromRGB(187, 0, 255)
+        elseif v == "Neon Green" then VisualSettings.Color = Color3.fromRGB(0, 255, 100)
+        elseif v == "Fire Orange" then VisualSettings.Color = Color3.fromRGB(255, 100, 0)
+        end
+    end})
+
+-- Effects Tab
+local EffectsTab = CatVisuals:AddTab("Effects")
+local effectsCard = EffectsTab:AddCard(1, "Visual Effects")
+effectsCard:AddToggle({Label = "Weapon Forcefield", Default = false,
+    Callback = function(v) VisualSettings.WeaponEffect = v end})
+effectsCard:AddToggle({Label = "Arms Forcefield", Default = false,
+    Callback = function(v) VisualSettings.ArmsEffect = v end})
+effectsCard:AddDropdown({Label = "Effect Mode",
+    Options = {"Rainbow", "Cyber Green", "Purple", "Fire Orange"}, Default = "Rainbow",
+    Callback = function(v) VisualSettings.EffectMode = v end})
+
+------------------------------------------------------------------------
 -- Aimbot Logic Function
+------------------------------------------------------------------------
 local function IsVisible(part)
     if not AimSettings.WallCheck then return true end
     local raycastParams = RaycastParams.new()
