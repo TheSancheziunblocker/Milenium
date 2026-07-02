@@ -1,6 +1,3 @@
--- Host this content at a raw URL (pastebin, github raw, etc.)
--- Then use: local UILib = loadstring(game:HttpGet("YOUR_URL"))()
-
 local Players          = game:GetService("Players")
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -11,6 +8,32 @@ local LocalPlayer      = Players.LocalPlayer
 local camera           = workspace.CurrentCamera
 
 ------------------------------------------------------------------------
+-- THEME (moved up so everything can reference C)
+------------------------------------------------------------------------
+local C = {
+    BgMain      = Color3.fromRGB(12,  13,  17),
+    BgWindow    = Color3.fromRGB(17,  19,  23),
+    BgSidebar   = Color3.fromRGB(8,   9,   11),
+    BgCard      = Color3.fromRGB(21,  24,  29),
+    BgInput     = Color3.fromRGB(26,  29,  36),
+    Accent      = Color3.fromRGB(29,  191, 158),
+    AccentDim   = Color3.fromRGB(19,  128, 106),
+    BtnBg       = Color3.fromRGB(38,  42,  52),
+    BtnBgHover  = Color3.fromRGB(50,  55,  68),
+    BtnBgDown   = Color3.fromRGB(28,  32,  42),
+    TextMain    = Color3.fromRGB(209, 213, 219),
+    TextMuted   = Color3.fromRGB(107, 114, 128),
+    TextDis     = Color3.fromRGB(46,  50,  59),
+    White       = Color3.fromRGB(255, 255, 255),
+    Black       = Color3.fromRGB(0,   0,   0),
+    BgHeader    = Color3.fromRGB(10,  11,  15),
+}
+
+local WIN_TRANS  = 0.6
+local MAIN_TRANS = 0.6
+local SIDE_TRANS = 0.35
+
+------------------------------------------------------------------------
 -- BLUR SYSTEM
 ------------------------------------------------------------------------
 local BLUR_SIZE         = Vector2.new(10, 10)
@@ -18,7 +41,15 @@ local PART_SIZE         = 0.01
 local PART_TRANSPARENCY = 1 - 1e-7
 local START_INTENSITY   = 0.25
 
+-- Remove old DepthOfFieldEffect if re-running
+for _, v in ipairs(Lighting:GetChildren()) do
+    if v:IsA("DepthOfFieldEffect") and v.Name == "UILibDOF" then
+        v:Destroy()
+    end
+end
+
 local BLUR_OBJ          = Instance.new("DepthOfFieldEffect")
+BLUR_OBJ.Name           = "UILibDOF"
 BLUR_OBJ.FarIntensity   = 0
 BLUR_OBJ.NearIntensity  = START_INTENSITY
 BLUR_OBJ.FocusDistance  = 0.25
@@ -97,8 +128,10 @@ function BlurredGui.updateAll()
         updateGui(BlursList[i])
     end
 
-    local cframes = table.create(#BlursList, workspace.CurrentCamera.CFrame)
-    workspace:BulkMoveTo(PartsList, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+    if #PartsList > 0 then
+        local cframes = table.create(#BlursList, workspace.CurrentCamera.CFrame)
+        workspace:BulkMoveTo(PartsList, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+    end
 
     BLUR_OBJ.FocusDistance = 0.25 - camera.NearPlaneZ
 end
@@ -142,6 +175,11 @@ function BlurredGui:Destroy()
     rebuildPartsList()
 end
 
+-- Unbind any previous render step from a prior loadstring run
+pcall(function()
+    RunService:UnbindFromRenderStep("UILibraryBlurUpdate")
+end)
+
 RunService:BindToRenderStep(
     "UILibraryBlurUpdate",
     Enum.RenderPriority.Camera.Value + 1,
@@ -149,32 +187,6 @@ RunService:BindToRenderStep(
         BlurredGui.updateAll()
     end
 )
-
-------------------------------------------------------------------------
--- THEME
-------------------------------------------------------------------------
-local C = {
-    BgMain      = Color3.fromRGB(12,  13,  17),
-    BgWindow    = Color3.fromRGB(17,  19,  23),
-    BgSidebar   = Color3.fromRGB(8,   9,   11),
-    BgCard      = Color3.fromRGB(21,  24,  29),
-    BgInput     = Color3.fromRGB(26,  29,  36),
-    Accent      = Color3.fromRGB(29,  191, 158),
-    AccentDim   = Color3.fromRGB(19,  128, 106),
-    BtnBg       = Color3.fromRGB(38,  42,  52),
-    BtnBgHover  = Color3.fromRGB(50,  55,  68),
-    BtnBgDown   = Color3.fromRGB(28,  32,  42),
-    TextMain    = Color3.fromRGB(209, 213, 219),
-    TextMuted   = Color3.fromRGB(107, 114, 128),
-    TextDis     = Color3.fromRGB(46,  50,  59),
-    White       = Color3.fromRGB(255, 255, 255),
-    Black       = Color3.fromRGB(0,   0,   0),
-    BgHeader    = Color3.fromRGB(10,  11,  15),
-}
-
-local WIN_TRANS  = 0.6
-local MAIN_TRANS = 0.6
-local SIDE_TRANS = 0.35
 
 ------------------------------------------------------------------------
 -- UTILITY
@@ -288,17 +300,13 @@ end
 
 ------------------------------------------------------------------------
 -- SCREEN GUI
--- Uses a unique name + cleanup of any previous instance so that
--- re-running the loadstring doesn't stack duplicate GUIs.
+-- Remove stale instance from previous loadstring run before creating
 ------------------------------------------------------------------------
 local GUI_NAME = "UILibrary_v1"
 
--- Remove any stale instance from a previous loadstring run
 local function cleanupOldGui()
-    -- Check CoreGui first
     local old = CoreGui:FindFirstChild(GUI_NAME)
     if old then old:Destroy() end
-    -- Check PlayerGui
     local pg = LocalPlayer:FindFirstChild("PlayerGui")
     if pg then
         local old2 = pg:FindFirstChild(GUI_NAME)
@@ -584,24 +592,15 @@ function UILib.SetTitle(name)
     titleLbl.Text = name or "MyUI"
 end
 
-------------------------------------------------------------------------
--- Destroy / cleanup – useful when re-executing the script
-------------------------------------------------------------------------
 function UILib.Destroy()
-    -- Unbind blur update
-    pcall(function()
-        RunService:UnbindFromRenderStep("UILibraryBlurUpdate")
-    end)
-    -- Destroy all blur parts
-    for blurObj, part in pairs(BlurObjects) do
+    pcall(function() RunService:UnbindFromRenderStep("UILibraryBlurUpdate") end)
+    for _, part in pairs(BlurObjects) do
         pcall(function() part:Destroy() end)
     end
     BlurObjects = {}
     BlursList   = {}
     PartsList   = {}
-    -- Remove depth of field
     pcall(function() BLUR_OBJ:Destroy() end)
-    -- Remove screen gui
     pcall(function() SG:Destroy() end)
 end
 
@@ -921,7 +920,7 @@ function UILib.AddCategory(cfg)
             -- TOGGLE
             ----------------------------------------------------------------
             function cAPI:AddToggle(cfg2)
-                cfg2      = cfg2 or {}
+                cfg2           = cfg2 or {}
                 local lbl2     = cfg2.Label    or "Toggle"
                 local default  = cfg2.Default  or false
                 local disabled = cfg2.Disabled or false
@@ -933,29 +932,29 @@ function UILib.AddCategory(cfg)
                 local PW, PH = 24, 12
                 local TD     = 8
                 local pill   = N("Frame", {
-                    Size             = UDim2.new(0, PW, 0, PH),
-                    Position         = UDim2.new(1, -PW, 0.5, -PH / 2),
-                    BackgroundColor3 = Color3.fromRGB(30, 34, 42),
-                    BorderSizePixel  = 0,
+                    Size                   = UDim2.new(0, PW, 0, PH),
+                    Position               = UDim2.new(1, -PW, 0.5, -PH / 2),
+                    BackgroundColor3       = Color3.fromRGB(30, 34, 42),
+                    BorderSizePixel        = 0,
                     BackgroundTransparency = disabled and 0.5 or 0,
-                    ZIndex           = 5,
-                    Parent           = row2,
+                    ZIndex                 = 5,
+                    Parent                 = row2,
                 })
                 Cor(pill, math.floor(PH / 2))
 
                 local thumb = N("Frame", {
-                    Size             = UDim2.new(0, TD, 0, TD),
-                    Position         = UDim2.new(0, 2, 0.5, -TD / 2),
-                    BackgroundColor3 = Color3.fromRGB(75, 82, 96),
-                    BorderSizePixel  = 0,
+                    Size                   = UDim2.new(0, TD, 0, TD),
+                    Position               = UDim2.new(0, 2, 0.5, -TD / 2),
+                    BackgroundColor3       = Color3.fromRGB(75, 82, 96),
+                    BorderSizePixel        = 0,
                     BackgroundTransparency = disabled and 0.5 or 0,
-                    ZIndex           = 6,
-                    Parent           = pill,
+                    ZIndex                 = 6,
+                    Parent                 = pill,
                 })
                 Cor(thumb, math.floor(TD / 2))
 
                 local function setT(v, anim)
-                    state = v
+                    state     = v
                     local bg  = v and C.Accent or Color3.fromRGB(30, 34, 42)
                     local tc  = v and C.White  or Color3.fromRGB(75, 82, 96)
                     local pos = v
@@ -995,7 +994,7 @@ function UILib.AddCategory(cfg)
             -- SLIDER
             ----------------------------------------------------------------
             function cAPI:AddSlider(cfg2)
-                cfg2   = cfg2 or {}
+                cfg2       = cfg2 or {}
                 local lbl2 = cfg2.Label    or "Slider"
                 local mn   = cfg2.Min      or 0
                 local mx   = cfg2.Max      or 1
@@ -1113,7 +1112,7 @@ function UILib.AddCategory(cfg)
             -- HOLD KEYBIND
             ----------------------------------------------------------------
             function cAPI:AddHoldKeybind(cfg2)
-                cfg2     = cfg2 or {}
+                cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label    or "Keybind"
                 local default = cfg2.Default
                 local cb      = cfg2.Callback or function() end
@@ -1174,14 +1173,14 @@ function UILib.AddCategory(cfg)
             -- TOGGLE KEYBIND
             ----------------------------------------------------------------
             function cAPI:AddToggleKeybind(cfg2)
-                cfg2      = cfg2 or {}
-                local lbl2     = cfg2.Label    or "Toggle"
-                local default  = cfg2.Default  or false
-                local defKey   = cfg2.Key
-                local cb       = cfg2.Callback or function() end
-                local state    = default
-                local bk       = defKey
-                local listen   = false
+                cfg2          = cfg2 or {}
+                local lbl2    = cfg2.Label   or "Toggle"
+                local default = cfg2.Default or false
+                local defKey  = cfg2.Key
+                local cb      = cfg2.Callback or function() end
+                local state   = default
+                local bk      = defKey
+                local listen  = false
 
                 local row2 = N("Frame", {
                     Name                   = "TKR_" .. lbl2,
@@ -1242,7 +1241,7 @@ function UILib.AddCategory(cfg)
                 Cor(thumb, math.floor(TD / 2))
 
                 local function setState(v, anim)
-                    state = v
+                    state     = v
                     local bg  = v and C.Accent or Color3.fromRGB(30, 34, 42)
                     local tc  = v and C.White  or Color3.fromRGB(75, 82, 96)
                     local pos = v
@@ -1308,7 +1307,7 @@ function UILib.AddCategory(cfg)
             -- DROPDOWN
             ----------------------------------------------------------------
             function cAPI:AddDropdown(cfg2)
-                cfg2     = cfg2 or {}
+                cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label    or "Dropdown"
                 local opts    = cfg2.Options  or {}
                 local default = cfg2.Default  or opts[1]
@@ -1361,9 +1360,9 @@ function UILib.AddCategory(cfg)
                     Parent           = chevCont,
                 }); Cor(chR, 1)
 
-                local LIST_W  = CHIP_W + 16
-                local BASE_Z  = nextPopupZ()
-                local listF   = N("Frame", {
+                local LIST_W     = CHIP_W + 16
+                local BASE_Z     = nextPopupZ()
+                local listF      = N("Frame", {
                     Size             = UDim2.new(0, LIST_W, 0, 0),
                     BackgroundColor3 = C.BgCard,
                     BorderSizePixel  = 0,
@@ -1485,7 +1484,7 @@ function UILib.AddCategory(cfg)
             -- COLOR PICKER
             ----------------------------------------------------------------
             function cAPI:AddColorPicker(cfg2)
-                cfg2     = cfg2 or {}
+                cfg2          = cfg2 or {}
                 local lbl2    = cfg2.Label    or "Color"
                 local default = cfg2.Default  or C.Accent
                 local cb      = cfg2.Callback or function() end
@@ -1580,7 +1579,7 @@ function UILib.AddCategory(cfg)
                         Parent           = tk,
                     })
                     Cor(fl, 1)
-                    local th = N("Frame", {
+                    N("Frame", {
                         Size             = UDim2.new(0, 6, 0, 6),
                         Position         = UDim2.new(1, -3, 0.5, -3),
                         BackgroundColor3 = C.White,
@@ -1588,7 +1587,6 @@ function UILib.AddCategory(cfg)
                         ZIndex           = BASE_Z + 3,
                         Parent           = fl,
                     })
-                    Cor(th, 3)
                     local ht = N("TextButton", {
                         Size                   = UDim2.new(1, 0, 0, 14),
                         Position               = UDim2.new(0, 0, 0.5, -7),
@@ -1670,7 +1668,7 @@ function UILib.AddCategory(cfg)
             -- STATUS BOX
             ----------------------------------------------------------------
             function cAPI:AddStatus(cfg2)
-                cfg2 = cfg2 or {}
+                cfg2      = cfg2 or {}
                 local text = cfg2.Text or "Inactive"
 
                 local box = N("Frame", {
@@ -1747,7 +1745,7 @@ function UILib.AddCategory(cfg)
             -- BUTTON
             ----------------------------------------------------------------
             function cAPI:AddButton(cfg2)
-                cfg2 = cfg2 or {}
+                cfg2       = cfg2 or {}
                 local lbl4 = cfg2.Label    or "Button"
                 local cb   = cfg2.Callback or function() end
 
@@ -1797,7 +1795,6 @@ function UILib.AddCategory(cfg)
 end -- UILib.AddCategory
 
 ------------------------------------------------------------------------
--- RETURN
--- This is the value that loadstring(...)() evaluates to.
+-- RETURN  (loadstring(...)() receives this table)
 ------------------------------------------------------------------------
 return UILib
