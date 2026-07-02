@@ -114,7 +114,7 @@ for _, player in pairs(Players:GetPlayers()) do if player ~= LocalPlayer then Cr
 ------------------------------------------------------------------------
 local UILib = loadstring(game:HttpGet("https://raw.githubusercontent.com/TheSancheziunblocker/Milenium/refs/heads/main/Mainui.lua", true))()
 
-UILib.SetTitle("PIPELINE.AIM")
+UILib.SetTitle("Milenium Bot")
 
 -- ==================== AIMBOT CATEGORY ====================
 local CatAimbot = UILib.AddCategory({Name = "Aimbot", Image = 6031280882})
