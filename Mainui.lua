@@ -1798,4 +1798,13 @@ end -- UILib.AddCategory
 ------------------------------------------------------------------------
 -- RETURN  (loadstring(...)() receives this table)
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- RETURN  (loadstring(...)() receives this table)
+------------------------------------------------------------------------
+task.defer(function()
+    RunService.Heartbeat:Wait()
+    RunService.Heartbeat:Wait()
+    BlurredGui.new(blurBacker, "Rectangle")
+end)
+
 return UILib
